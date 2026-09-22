@@ -1,0 +1,3 @@
+[submodule "vendor/etch"]
+	path = vendor/etch
+	url = https://github.com/rm-industries/etch.git
