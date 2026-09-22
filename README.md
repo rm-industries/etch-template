@@ -13,18 +13,18 @@ new repository with its submodule:
 ```sh
 git clone --recurse-submodules https://github.com/YOU/YOUR-DOTFILES.git
 cd YOUR-DOTFILES
-./install
+./etch
 ```
 
-`./install` displays the developer **plan**. It does not apply changes. Review the
+`./etch` displays the developer **plan**. It does not apply changes. Review the
 module before applying: this starter links its generic file to `~/.gitconfig`.
 An existing conflicting file is refused, so migrate its settings and decide
 ownership before replacing anything.
 
 ```sh
-./install doctor --profile developer
-./install apply --profile developer
-./install facts --profile developer
+./etch doctor --profile developer
+./etch apply --profile developer
+./etch facts --profile developer
 ```
 
 Explicit arguments are passed to Etch unchanged. The launcher runs from the
@@ -36,7 +36,7 @@ Git and network access are needed to clone/initialize or update the submodule.
 ## Files you own
 
 ```text
-install
+etch
 .gitmodules
 .gitignore
 defaults.conf
@@ -77,8 +77,8 @@ Choose and review an Etch release or commit, then update the pin explicitly:
 ```sh
 git -C vendor/etch fetch origin
 git -C vendor/etch checkout --detach REVIEWED_COMMIT
-./install doctor --profile developer
-./install
+./etch doctor --profile developer
+./etch
 git add vendor/etch
 git commit -m "Update pinned Etch engine"
 ```
