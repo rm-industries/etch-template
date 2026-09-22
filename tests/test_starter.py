@@ -34,14 +34,27 @@ class StarterTests(unittest.TestCase):
         )
         self.home = self.root / "home"
         self.home.mkdir()
-        self.env = dict(os.environ, PATH=str(self.bin), HOME=str(self.home), PYTHONNOUSERSITE="1")
+        self.env = dict(
+            os.environ, PATH=str(self.bin), HOME=str(self.home), PYTHONNOUSERSITE="1"
+        )
         for key in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV"):
             self.env.pop(key, None)
 
     def git(self, cwd: Path, *args: str) -> str:
         return subprocess.run(
-            [self.git_command, "-c", "protocol.file.allow=always", "-c", "core.hooksPath=/dev/null", *args],
-            cwd=cwd, env=self.git_env, check=True, capture_output=True, text=True,
+            [
+                self.git_command,
+                "-c",
+                "protocol.file.allow=always",
+                "-c",
+                "core.hooksPath=/dev/null",
+                *args,
+            ],
+            cwd=cwd,
+            env=self.git_env,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
 
     def consumer(self) -> Path:
@@ -58,14 +71,30 @@ class StarterTests(unittest.TestCase):
         self.git(self.root, "clone", "--bare", str(ROOT / "vendor/etch"), str(mirror))
         clone = self.root / "recursive clone"
         # Fixture-only URL rewrite avoids network without changing .gitmodules.
-        self.git(self.root, "-c", "url.{}.insteadOf=https://github.com/rm-industries/etch.git".format(mirror.as_uri()), "clone", "--recurse-submodules", str(source), str(clone))
+        self.git(
+            self.root,
+            "-c",
+            "url.{}.insteadOf=https://github.com/rm-industries/etch.git".format(
+                mirror.as_uri()
+            ),
+            "clone",
+            "--recurse-submodules",
+            str(source),
+            str(clone),
+        )
         self.assertEqual(self.git(clone / "vendor/etch", "rev-parse", "HEAD"), expected)
         return clone
 
-    def run_install(self, consumer: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_install(
+        self, consumer: Path, *args: str
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [str(consumer / "install"), *args], cwd=self.root, env=self.env,
-            capture_output=True, text=True, timeout=30,
+            [str(consumer / "install"), *args],
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
 
     def test_consumer_clone_plan_apply_and_second_run(self) -> None:
@@ -76,7 +105,10 @@ class StarterTests(unittest.TestCase):
         self.assertFalse((self.home / ".gitconfig").exists())
         first = self.run_install(consumer, "apply", "--profile", "developer")
         self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
-        self.assertEqual((self.home / ".gitconfig").resolve(), consumer / "modules/git/files/gitconfig")
+        self.assertEqual(
+            (self.home / ".gitconfig").resolve(),
+            consumer / "modules/git/files/gitconfig",
+        )
         second = self.run_install(consumer, "apply", "--profile", "developer")
         self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
         self.assertIn("SKIPPED", second.stdout)

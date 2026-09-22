@@ -16,7 +16,7 @@ CDPATH= cd -- "$repo_dir"
 
 if [ ! -f vendor/etch/etch ]; then
     echo "Etch source is missing from vendor/etch." >&2
-    echo "Initialize the repository's submodules or vendor Etch source there." >&2
+    echo "Run: git submodule update --init --recursive" >&2
     exit 1
 fi
 
