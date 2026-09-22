@@ -7,6 +7,9 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
+# Find this consumer repository so ./install works from any working directory.
+# Keep this block when customizing the default command below; Etch reads the
+# modules, profiles and defaults relative to this directory.
 # Shell parameter expansion avoids requiring an external dirname utility.
 case "$0" in
     */*) repo_dir=${0%/*} ;;
@@ -14,14 +17,30 @@ case "$0" in
 esac
 CDPATH= cd -- "$repo_dir"
 
+# This path matches the engine submodule declared in .gitmodules. Normally leave
+# it unchanged. If you move the submodule, update both this check and the exec
+# path at the end of this file to match its new location.
 if [ ! -f vendor/etch/etch ]; then
     echo "Etch source is missing from vendor/etch." >&2
     echo "Run: git submodule update --init --recursive" >&2
     exit 1
 fi
 
+# Choose what a bare ./install does. "$#" counts the supplied arguments; when
+# there are none, "set --" supplies the default arguments for the exec below.
+# The current default previews the developer profile without applying changes.
+#
+# Consumer changes (replace the set -- line below with ONE of these):
+#   set -- plan --profile workstation   # Use profiles/workstation.conf.
+#   set -- apply --profile developer    # Make bare ./install apply changes.
+#   set -- plan git vim                 # Select modules/git and modules/vim.
+# Create the referenced profile/modules first. These defaults apply only when
+# no arguments are given: ./install doctor --profile developer still runs doctor.
 if [ "$#" -eq 0 ]; then
     set -- plan --profile developer
 fi
 
+# Forward the selected arguments unchanged ("$@" preserves argument boundaries)
+# and return Etch's exit status. -S keeps startup independent of site packages;
+# no pip install or virtual environment is needed for the pinned engine.
 exec python3 -S vendor/etch/etch "$@"
