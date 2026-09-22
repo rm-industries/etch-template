@@ -50,8 +50,8 @@ Edit the modules, profile, defaults and launcher in your own repository. Add you
 personal Git identity there, not in this public template. Your consumer has its
 own history and receives no automatic template updates or synchronization.
 Template-specific development belongs in this repository; engine issues belong
-in `rm-industries/etch`. The starter's validation workflow/tests are optional
-consumer maintenance files and can be removed from your copy.
+in `rm-industries/etch`. The included CI workflow is yours to extend alongside
+your modules and profiles.
 
 ## Initialize and inspect the engine pin
 
@@ -88,17 +88,29 @@ change in the consumer repository and review its diff. Avoid editing engine file
 inside the submodule; contribute engine changes upstream. There is no automatic
 engine upgrade, dependency resolver or implicit plugin installation.
 
-## Validation
+## CI checks your configuration
 
-```sh
-python3 -S -m unittest discover -s tests -v
-```
+The included workflow runs the real consumer commands on Linux and macOS, both
+for the `developer` profile and the standalone `git` module. Each job uses a fresh
+temporary home directory, initializes the pinned engine, then:
 
-The test suite creates a new consumer history from the template tree, recursively
-clones it using a local engine mirror, and checks the pin. Runtime then has only
-Python on PATH, site packages disabled, and a temporary home. It verifies the
-no-argument plan, first apply, declarative second-apply no-op, missing-engine
-message, and argument/exit forwarding. No real home configuration is changed.
-Git is a test-fixture requirement, not a runtime requirement. CI runs these tests
-on Linux/macOS with Python 3.9 and 3.14. This checks the consumer tree locally;
-it does not claim to exercise GitHub's web template-generation service.
+1. Runs `plan`, `apply`, and `doctor` for that selection.
+2. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
+   the expected `init.defaultBranch = main` setting.
+3. Applies the same selection again and fails if it reports changes or failures.
+
+There are no template test fixtures or separate Python test suite. This workflow
+validates your configuration through the commands you actually use. Etch's engine
+repository separately tests bootstrap and provider implementation behavior.
+
+Extend the selection matrix when you add profiles or standalone modules, install
+their prerequisites on the CI runner, and add assertions for the state you expect.
+The Git assertions in this starter suit both current selections; adapt or scope
+them when adding unrelated modules. A successful apply alone is not a check of
+every desired setting. Opaque commands may report execution on every apply;
+adjust the second-run assertion deliberately if your configuration includes them.
+
+The workflow runs on pushes, pull requests and manual dispatch. It uses Python
+3.14; engine compatibility across Python versions is tested upstream. A temporary
+home isolates home-file changes, but package-manager actions added later can still
+change the runner's system state. Use disposable runners for installation jobs.

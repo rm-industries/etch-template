@@ -1,22 +1,47 @@
-name: Starter validation
-on: [push, pull_request]
+name: Validate configuration
+on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  consumer:
+  configuration:
+    name: ${{ matrix.os }} / ${{ matrix.selection }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ['3.9', '3.14']
+        selection: ['--profile developer', 'git']
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
-      - run: python -S -m unittest discover -s tests -v
+          python-version: '3.14'
+      - name: Apply and verify the selected configuration
+        shell: bash
+        env:
+          HOME: ${{ runner.temp }}/etch-home
+          ETCH_SELECTION: ${{ matrix.selection }}
+        run: |
+          mkdir -p "$HOME"
+          read -r -a selection <<< "$ETCH_SELECTION"
+          ./install plan "${selection[@]}"
+          ./install apply "${selection[@]}"
+          ./install doctor "${selection[@]}"
+
+          # Assert the state this starter actually promises.
+          test -L "$HOME/.gitconfig"
+          test "$(readlink "$HOME/.gitconfig")" = "$GITHUB_WORKSPACE/modules/git/files/gitconfig"
+          test "$(git config --file "$HOME/.gitconfig" --get init.defaultBranch)" = main
+
+          ./install apply "${selection[@]}" | tee "$RUNNER_TEMP/etch-second-apply.log"
+          if grep -Eq '^(CHANGED|FAILED|BLOCKED) ' "$RUNNER_TEMP/etch-second-apply.log"; then
+            echo "Second apply did not preserve the expected declarative state." >&2
+            exit 1
+          fi
