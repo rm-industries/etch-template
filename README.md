@@ -4,6 +4,8 @@ A minimal consumer repository for [Etch](https://github.com/rm-industries/etch).
 It includes one generic Git configuration module, a developer profile, empty
 provider defaults, and an engine pinned as a Git submodule. There are no optional
 plugins, personal identity settings, credentials or package installations.
+The Git module declares an `available` fact with the explicit `command` provider;
+`./etch facts --profile developer` shows whether Git is on your path.
 
 ## Create your own consumer
 
@@ -80,7 +82,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins `65cd40b25248804c77976bb49638d1ec2b02615e`. Generated consumers preserve that
+pins `16616001d9c3de0ae78e4be51fb7433f5e1ee809`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
