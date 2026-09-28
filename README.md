@@ -53,6 +53,21 @@ Template-specific development belongs in this repository; engine issues belong
 in `rm-industries/etch`. The included CI workflow is yours to extend alongside
 your modules and profiles.
 
+Keep module and profile files consistent with Etch's built-in formatter. Short
+lists such as `['git']` stay inline, while longer lists split. Comments are kept.
+No Python formatter or package installation is needed:
+
+```sh
+./etch format
+./etch format modules/git/module.conf
+./etch format --check
+./etch validate
+```
+
+`format --check` verifies the canonical layout without changing files; `validate`
+separately checks static configuration declarations. `.editorconfig` helps your
+editor follow Etch's two-space style but does not control either command.
+
 ## Initialize and inspect the engine pin
 
 For an ordinary clone or a new template copy without checked-out submodules:
@@ -65,7 +80,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins `2c671d95179780c9559e532144b321f7dac18102`. Generated consumers preserve that
+pins `65cd40b25248804c77976bb49638d1ec2b02615e`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
@@ -94,10 +109,11 @@ The included workflow runs the real consumer commands on Linux and macOS, both
 for the `developer` profile and the standalone `git` module. Each job uses a fresh
 temporary home directory, initializes the pinned engine, then:
 
-1. Runs `plan`, `apply`, and `doctor` for that selection.
-2. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
+1. Checks formatting and validates static declarations with Etch itself.
+2. Runs `plan`, `apply`, and `doctor` for that selection.
+3. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
    the expected `init.defaultBranch = main` setting.
-3. Applies the same selection again and fails if it reports changes or failures.
+4. Applies the same selection again and fails if it reports changes or failures.
 
 There are no template test fixtures or separate Python test suite. This workflow
 validates your configuration through the commands you actually use. Etch's engine
