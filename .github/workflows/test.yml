@@ -30,6 +30,8 @@ jobs:
           ETCH_SELECTION: ${{ matrix.selection }}
         run: |
           mkdir -p "$HOME"
+          ./etch format --check
+          ./etch validate
           read -r -a selection <<< "$ETCH_SELECTION"
           ./etch plan "${selection[@]}"
           ./etch apply "${selection[@]}"
