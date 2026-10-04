@@ -82,7 +82,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins `16616001d9c3de0ae78e4be51fb7433f5e1ee809`. Generated consumers preserve that
+pins `50f4bcd21baae4e7f0b8107b56265ca32b8169f4`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
@@ -102,33 +102,37 @@ git commit -m "Update pinned Etch engine"
 
 Replace `REVIEWED_COMMIT` with the full revision you chose. Commit that gitlink
 change in the consumer repository and review its diff. Avoid editing engine files
-inside the submodule; contribute engine changes upstream. There is no automatic
-engine upgrade, dependency resolver or implicit plugin installation.
+inside the submodule; contribute engine changes upstream. Dependabot proposes
+reviewed `vendor/etch` pin updates, and CI verifies those PRs without moving the
+pin itself. There is no implicit plugin installation.
 
 ## CI checks your configuration
 
-The included workflow runs the real consumer commands on Linux and macOS, both
-for the `developer` profile and the standalone `git` module. Each job uses a fresh
-temporary home directory, initializes the pinned engine, then:
+The included workflow runs the `developer` profile on Linux and macOS with both
+Python 3.9 and the latest stable Python 3.x. The profile currently contains the
+starter Git module; add ordinary modules to that profile rather than to the CI
+matrix. Each job uses a fresh temporary home and the pinned engine, then:
 
 1. Checks formatting and validates static declarations with Etch itself.
-2. Runs `plan`, `apply`, and `doctor` for that selection.
+2. Runs `plan`, `apply`, and `doctor` for the representative profile.
 3. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
    the expected `init.defaultBranch = main` setting.
-4. Applies the same selection again and fails if it reports changes or failures.
+4. Applies the profile again and fails if it reports changes or failures.
 
 There are no template test fixtures or separate Python test suite. This workflow
 validates your configuration through the commands you actually use. Etch's engine
 repository separately tests bootstrap and provider implementation behavior.
 
-Extend the selection matrix when you add profiles or standalone modules, install
-their prerequisites on the CI runner, and add assertions for the state you expect.
-The Git assertions in this starter suit both current selections; adapt or scope
-them when adding unrelated modules. A successful apply alone is not a check of
-every desired setting. Opaque commands may report execution on every apply;
-adjust the second-run assertion deliberately if your configuration includes them.
+When you add modules, install their prerequisites on the CI runner and add only
+the assertions needed for the state your repository promises. A successful
+apply alone is not a check of every desired setting. Opaque commands may report
+execution on every apply; adjust the second-run assertion deliberately if your
+configuration includes them.
 
-The workflow runs on pushes, pull requests and manual dispatch. It uses Python
-3.14; engine compatibility across Python versions is tested upstream. A temporary
-home isolates home-file changes, but package-manager actions added later can still
-change the runner's system state. Use disposable runners for installation jobs.
+The workflow runs on configuration pushes, pull requests, a weekly schedule and
+manual dispatch. Dependabot also proposes GitHub Actions and pinned Etch updates.
+Repository automation checks workflow syntax and security with actionlint and
+zizmor; a separate security workflow runs CodeQL for Actions and Dependency Review.
+A temporary home isolates home-file changes, but package-manager actions added
+later can still change the runner's system state. Use disposable runners for
+installation jobs.
