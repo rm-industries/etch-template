@@ -158,3 +158,21 @@ and do not select Python versions through `image`.
 GitLab runs merge-request pipelines and branch pipelines, avoiding duplicate push
 pipelines when a merge request is open. Create schedules in GitLab's UI if you want
 periodic checks. macOS and Windows GitLab runners are outside this initial setup.
+
+## Optional GitHub-to-GitLab sync
+
+The `Sync GitLab` workflow copies `main` and tags to your GitLab repository.
+In GitHub's Settings → Secrets and variables → Actions, add the repository
+variable `GITLAB_REPOSITORY_URL` (a credential-free HTTPS URL ending in `.git`)
+and repository secret `GITLAB_TOKEN` (a GitLab token with `write_repository`
+scope and permission to push to the destination's protected branches).
+Create the destination repository first, preferably without an initial commit.
+
+Without the destination variable, the sync job is skipped. After merging the
+workflow into `main`, pushes to `main` or tags sync automatically; manual dispatch
+is also available from `main`. The push is atomic and does not force updates or
+delete destination refs. Divergent branches or tags fail rather than being
+overwritten. GitHub is the source of truth while this workflow is enabled; feature
+branches, issues and merge requests are not copied. Successful pushes can start
+GitLab CI. Credentials are supplied through a temporary askpass script and are
+not stored in the remote URL.
