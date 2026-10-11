@@ -41,6 +41,9 @@ Git and network access are needed to clone/initialize or update the submodule.
 etch
 .gitmodules
 .gitignore
+.gitlab-ci.yml
+.github/workflows/etch.yml
+ci/verify.sh
 defaults.conf
 profiles/developer.conf
 modules/git/module.conf
@@ -108,7 +111,7 @@ pin itself. There is no implicit plugin installation.
 
 ## CI checks your configuration
 
-The included workflow runs the `developer` profile on Linux and macOS with both
+The GitHub workflow runs the `developer` profile on Linux and macOS with both
 Python 3.9 and the latest stable Python 3.x. The profile currently contains the
 starter Git module; add ordinary modules to that profile rather than to the CI
 matrix. Each job uses a fresh temporary home and the pinned engine, then:
@@ -136,3 +139,22 @@ zizmor; a separate security workflow runs CodeQL for Actions and Dependency Revi
 A temporary home isolates home-file changes, but package-manager actions added
 later can still change the runner's system state. Use disposable runners for
 installation jobs.
+
+## GitLab CI
+
+`.gitlab-ci.yml` provides a Linux container-runner matrix for Python 3.9 and the latest stable Python 3.x. GitLab initializes the pinned engine through
+[`GIT_SUBMODULE_STRATEGY: recursive`](https://docs.gitlab.com/ci/runners/git_submodules/); the public HTTPS submodule does not need a
+token. Keep the submodule pin when moving your consumer to GitLab. Private
+submodules require your own runner authentication configuration.
+
+Both services call `ci/verify.sh`, which creates and removes a temporary home,
+checks your real developer profile and asserts its promised Git configuration.
+Extend that script when you add modules, so GitHub and GitLab exercise the same
+configuration. No separate test fixtures or Python test packages are added.
+The full Python images provide Python, Bash and Git; use a Docker/Kubernetes
+runner that supports the job's `image`. Shell runners need those tools installed
+and do not select Python versions through `image`.
+
+GitLab runs merge-request pipelines and branch pipelines, avoiding duplicate push
+pipelines when a merge request is open. Create schedules in GitLab's UI if you want
+periodic checks. macOS and Windows GitLab runners are outside this initial setup.

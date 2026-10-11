@@ -11,6 +11,8 @@ on:
       - vendor/etch
       - .gitmodules
       - .github/workflows/etch.yml
+      - ci/**
+      - .gitlab-ci.yml
   pull_request:
     branches: [main]
     paths:
@@ -21,6 +23,8 @@ on:
       - vendor/etch
       - .gitmodules
       - .github/workflows/etch.yml
+      - ci/**
+      - .gitlab-ci.yml
   schedule:
     - cron: '0 8 * * 6'
   workflow_dispatch:
@@ -50,26 +54,6 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
-      - name: Apply developer profile
+      - name: Verify developer profile
         shell: bash
-        env:
-          HOME: ${{ runner.temp }}/etch-home
-        run: |
-          set -euo pipefail
-          mkdir -p "$HOME"
-          ./etch format --check
-          ./etch validate
-          ./etch plan --profile developer
-          ./etch apply --profile developer
-          ./etch doctor --profile developer
-
-          # Verify the starter's promised Git configuration.
-          test -L "$HOME/.gitconfig"
-          test "$(readlink "$HOME/.gitconfig")" = "$GITHUB_WORKSPACE/modules/git/files/gitconfig"
-          test "$(git config --file "$HOME/.gitconfig" --get init.defaultBranch)" = main
-
-          ./etch apply --profile developer | tee "$RUNNER_TEMP/etch-second-apply.log"
-          if grep -Eq '^[[:space:]]*(CHANGED|FAILED|BLOCKED)([[:space:]]|$)' "$RUNNER_TEMP/etch-second-apply.log"; then
-            echo "Second apply did not preserve the expected declarative state." >&2
-            exit 1
-          fi
+        run: bash ci/verify.sh
