@@ -132,7 +132,7 @@ apply alone is not a check of every desired setting. Opaque commands may report
 execution on every apply; adjust the second-run assertion deliberately if your
 configuration includes them.
 
-The workflow runs on configuration pushes, pull requests, a weekly schedule and
+The GitHub workflow runs on every push and pull request targeting `main`, a weekly schedule and
 manual dispatch. Dependabot also proposes GitHub Actions and pinned Etch updates.
 Repository automation checks workflow syntax and security with actionlint and
 zizmor; a separate security workflow runs CodeQL for Actions and Dependency Review.
