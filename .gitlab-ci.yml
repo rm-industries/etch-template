@@ -1,0 +1,19 @@
+# Start with Linux container runners; add other OS runners only when you have them.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+compatibility:
+  image: python:${PYTHON_VERSION}
+  timeout: 10 minutes
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ['3.9', '3']
+  script:
+    - bash ci/verify.sh
