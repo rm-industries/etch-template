@@ -18,7 +18,12 @@ updates:
     labels:
       - dependencies
     groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - '*'
       github-actions:
+        applies-to: version-updates
         patterns:
           - '*'
 
