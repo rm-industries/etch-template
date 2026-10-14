@@ -84,7 +84,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins Etch source commit `017410d5daa51abc2e155e01880c2344bf4a83c1`. Generated consumers preserve that
+pins Etch source commit `f0f0aa3ecce6b31bc2943318497e4f018557abca`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
