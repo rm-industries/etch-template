@@ -122,6 +122,15 @@ for application-specific outcomes belong to the consumer only when desired.
 Launcher regression tests, symlink edge cases and provider idempotence belong in
 the core Etch project; the starter does not add fixtures or helper directories.
 
+On macOS, CI prepares a temporary cask app directory and loads the environment
+of preinstalled Homebrew, including its standard Apple Silicon/Intel locations.
+If Homebrew is absent, this optional preparation is skipped; the generic starter
+does not require it and CI does not install it. Modules added later can use the
+prepared environment. GitLab's initial runner remains Linux, using the same
+platform-aware commands. Consumers only need to add runner prerequisites when
+their own modules need tools not already available; CI cannot infer every tool
+from arbitrary scripts, and privileged bootstrap remains an explicit choice.
+
 The GitHub workflow runs on every push and pull request targeting `main`, a weekly schedule and
 manual dispatch. Dependabot also proposes GitHub Actions and pinned Etch updates.
 Repository automation checks workflow syntax and security with actionlint and
