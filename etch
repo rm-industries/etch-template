@@ -7,14 +7,23 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-# Find this consumer repository so ./etch works from any working directory.
-# Keep this block when customizing the default command below; Etch reads the
-# modules, profiles and defaults relative to this directory.
-# Shell parameter expansion avoids requiring an external dirname utility.
-case "$0" in
-    */*) repo_dir=${0%/*} ;;
-    *) repo_dir=. ;;
-esac
+# Resolve the checkout rather than the invocation directory, so a user-local
+# symlink still selects this consumer's pinned engine and configuration.
+repo_dir=$(python3 -S - "$0" <<'PYTHON'
+import shutil
+import sys
+from pathlib import Path
+
+launcher = sys.argv[1]
+if "/" not in launcher:
+    launcher = shutil.which(launcher) or launcher
+try:
+    print(Path(launcher).resolve(strict=True).parent)
+except (OSError, RuntimeError) as error:
+    print("Etch launcher: cannot resolve launcher: {}".format(error), file=sys.stderr)
+    sys.exit(1)
+PYTHON
+)
 CDPATH= cd -- "$repo_dir"
 
 # This path matches the engine submodule declared in .gitmodules. Normally leave

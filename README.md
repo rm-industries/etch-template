@@ -29,8 +29,8 @@ ownership before replacing anything.
 ./etch facts --profile developer
 ```
 
-Explicit arguments are passed to Etch unchanged. The launcher runs from the
-consumer root even when invoked from another directory. Runtime needs only a
+Explicit arguments are passed to Etch unchanged. The launcher resolves its actual checkout, including through absolute/relative
+symlinks, and runs from the consumer root even when invoked from another directory. Runtime needs only a
 supported Linux/macOS environment, `/bin/sh`, and Python 3.9 or newer; no virtual
 environment, pip, Git or network is needed after the engine is initialized.
 Git and network access are needed to clone/initialize or update the submodule.
@@ -176,3 +176,44 @@ overwritten. GitHub is the source of truth while this workflow is enabled; featu
 branches, issues and merge requests are not copied. Successful pushes can start
 GitLab CI. Credentials are supplied through a temporary askpass script and are
 not stored in the remote URL.
+
+## Optional user-local launcher
+
+The launcher supports symlink invocation, including paths containing spaces,
+without copying engine or launcher code. If `~/.local/bin` is on your PATH, a link
+at `~/.local/bin/etch` can launch this consumer from any working directory. Keep
+both the checkout and its pinned engine available; moving the checkout requires
+updating the link. Dangling links and cycles fail rather than guessing a checkout.
+
+With an engine that supports `link.source_scope` (core Etch issue
+[#149](https://github.com/rm-industries/etch/issues/149)), declare an optional module
+and add it explicitly to your profile:
+
+```python
+{
+  'schema_version': 1,
+  'name': 'launcher',
+  'actions': [
+    {'link': {'~/.local/bin/etch': {
+      'path': 'etch', 'source_scope': 'repo', 'create': True,
+    }}},
+  ],
+}
+```
+
+The starter's current engine pin predates that option. Review and update the pin
+to a commit/release containing it before adding this module. Existing modules and
+profiles need no format or schema migration. Apply the module through `./etch`
+first; after setup, `etch validate`, `etch plan --profile developer`, and bare
+`etch` use this consumer's configuration and default preview behavior. Regular
+file/directory conflicts are refused; explicitly use `relink: True` only when you
+want to replace a different symlink.
+
+Installing the link and choosing your PATH are separate. If the directory is not
+already on PATH, add `$HOME/.local/bin` using your shell's own startup configuration
+(for example `export PATH="$HOME/.local/bin:$PATH"` in a POSIX-compatible shell).
+The template does not pick a shell or edit startup files. CI exercises the real
+launcher with direct/PATH invocation, absolute/relative chains, spaces, argument
+forwarding, failure exit status, preview defaults and invalid links using an
+isolated temporary consumer; it does not install a user-local command on your
+machine.
