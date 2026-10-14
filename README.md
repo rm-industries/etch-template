@@ -84,7 +84,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins Etch `v0.1.0` at `48dd8ee485f539196c83ff497f7a1298ffd5c803`. Generated consumers preserve that
+pins Etch source commit `017410d5daa51abc2e155e01880c2344bf4a83c1`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
@@ -113,23 +113,14 @@ pin itself. There is no implicit plugin installation.
 The GitHub workflow runs the `developer` profile on Linux and macOS with both
 Python 3.9 and the latest stable Python 3.x. The profile currently contains the
 starter Git module; add ordinary modules to that profile rather than to the CI
-matrix. Each job uses a fresh temporary home and the pinned engine, then:
-
-1. Checks formatting and validates static declarations with Etch itself.
-2. Runs `plan`, `apply`, and `doctor` for the representative profile.
-3. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
-   the expected `init.defaultBranch = main` setting.
-4. Applies the profile again and fails if it reports changes or failures.
-
-There are no template test fixtures or separate Python test suite. This workflow
-validates your configuration through the commands you actually use. Etch's engine
-repository separately tests bootstrap and provider implementation behavior.
-
-When you add modules, install their prerequisites on the CI runner and add only
-the assertions needed for the state your repository promises. A successful
-apply alone is not a check of every desired setting. Opaque commands may report
-execution on every apply; adjust the second-run assertion deliberately if your
-configuration includes them.
+matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
+validate declarations, diagnose repository setup, preview the developer profile
+and apply it. This follows the dotfiles workflow: CI checks whether **your setup
+applies successfully**, rather than testing Etch's implementation. Extend the
+profile and install runner prerequisites when adding modules. Optional assertions
+for application-specific outcomes belong to the consumer only when desired.
+Launcher regression tests, symlink edge cases and provider idempotence belong in
+the core Etch project; the starter does not add fixtures or helper directories.
 
 The GitHub workflow runs on every push and pull request targeting `main`, a weekly schedule and
 manual dispatch. Dependabot also proposes GitHub Actions and pinned Etch updates.
@@ -147,8 +138,8 @@ token. Keep the submodule pin when moving your consumer to GitLab. Private
 submodules require your own runner authentication configuration.
 
 Both services keep their verification commands directly in their CI YAML files,
-using matching blocks to create an isolated temporary home, apply your real
-developer profile and check its promised Git configuration. Extend both blocks
+using matching blocks to create an isolated temporary home and apply your real
+developer profile. Extend both blocks
 when adding modules so they continue to exercise the same configuration. No separate test fixtures or Python test packages are added.
 The full Python images provide Python, Bash and Git; use a Docker/Kubernetes
 runner that supports the job's `image`. Shell runners need those tools installed
@@ -202,8 +193,8 @@ and add it explicitly to your profile:
 }
 ```
 
-The starter's current engine pin predates that option. Review and update the pin
-to a commit/release containing it before adding this module. Existing modules and
+The pinned engine includes repository-scoped sources and repository-wide doctor
+diagnostics. Review engine updates deliberately before changing the pin. Existing modules and
 profiles need no format or schema migration. Apply the module through `./etch`
 first; after setup, `etch validate`, `etch plan --profile developer`, and bare
 `etch` use this consumer's configuration and default preview behavior. Regular
@@ -213,8 +204,5 @@ want to replace a different symlink.
 Installing the link and choosing your PATH are separate. If the directory is not
 already on PATH, add `$HOME/.local/bin` using your shell's own startup configuration
 (for example `export PATH="$HOME/.local/bin:$PATH"` in a POSIX-compatible shell).
-The template does not pick a shell or edit startup files. CI exercises the real
-launcher with direct/PATH invocation, absolute/relative chains, spaces, argument
-forwarding, failure exit status, preview defaults and invalid links using an
-isolated temporary consumer; it does not install a user-local command on your
-machine.
+The template does not pick a shell or edit startup files. Launcher regression coverage belongs in core Etch. Template CI only validates
+and applies the selected consumer profile in an isolated home.
