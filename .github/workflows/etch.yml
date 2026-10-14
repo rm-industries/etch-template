@@ -34,6 +34,34 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
-      - name: Verify developer profile
+      - name: Apply developer profile
         shell: bash
-        run: bash ci/verify.sh
+        run: |
+          set -euo pipefail
+          ci_home=$(mktemp -d)
+          trap 'rm -rf -- "$ci_home"' EXIT
+
+          # Prepare optional macOS tooling without making Homebrew a prerequisite.
+          if [[ "$(uname -s)" == Darwin ]]; then
+            export HOMEBREW_CASK_OPTS="--appdir=$ci_home/apps"
+            mkdir -p "$ci_home/apps"
+            brew_bin=$(command -v brew || true)
+            if [[ -z "$brew_bin" ]]; then
+              for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+                if [[ -x "$candidate" ]]; then
+                  brew_bin=$candidate
+                  break
+                fi
+              done
+            fi
+            if [[ -n "$brew_bin" ]]; then
+              eval "$("$brew_bin" shellenv)"
+            fi
+          fi
+
+          # Match dotfiles: verify this consumer's profile in an isolated user home.
+          env HOME="$ci_home" ./etch format --check
+          env HOME="$ci_home" ./etch validate
+          env HOME="$ci_home" ./etch doctor --profile developer
+          env HOME="$ci_home" ./etch plan --profile developer
+          env HOME="$ci_home" ./etch apply --profile developer

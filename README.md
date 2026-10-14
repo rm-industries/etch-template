@@ -29,8 +29,8 @@ ownership before replacing anything.
 ./etch facts --profile developer
 ```
 
-Explicit arguments are passed to Etch unchanged. The launcher runs from the
-consumer root even when invoked from another directory. Runtime needs only a
+Explicit arguments are passed to Etch unchanged. The launcher resolves its actual checkout, including through absolute/relative
+symlinks, and runs from the consumer root even when invoked from another directory. Runtime needs only a
 supported Linux/macOS environment, `/bin/sh`, and Python 3.9 or newer; no virtual
 environment, pip, Git or network is needed after the engine is initialized.
 Git and network access are needed to clone/initialize or update the submodule.
@@ -43,7 +43,6 @@ etch
 .gitignore
 .gitlab-ci.yml
 .github/workflows/etch.yml
-ci/verify.sh
 defaults.conf
 profiles/developer.conf
 modules/git/module.conf
@@ -85,7 +84,7 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins Etch `v0.1.0` at `48dd8ee485f539196c83ff497f7a1298ffd5c803`. Generated consumers preserve that
+pins Etch source commit `ccfb1fdcfceea2bab2f7d0c559323fe18b0d11ed`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
 The launcher prints initialization guidance when the engine is absent.
@@ -114,23 +113,23 @@ pin itself. There is no implicit plugin installation.
 The GitHub workflow runs the `developer` profile on Linux and macOS with both
 Python 3.9 and the latest stable Python 3.x. The profile currently contains the
 starter Git module; add ordinary modules to that profile rather than to the CI
-matrix. Each job uses a fresh temporary home and the pinned engine, then:
+matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
+validate declarations, diagnose repository setup, preview the developer profile
+and apply it. This follows the dotfiles workflow: CI checks whether **your setup
+applies successfully**, rather than testing Etch's implementation. Extend the
+profile and install runner prerequisites when adding modules. Optional assertions
+for application-specific outcomes belong to the consumer only when desired.
+Launcher regression tests, symlink edge cases and provider idempotence belong in
+the core Etch project; the starter does not add fixtures or helper directories.
 
-1. Checks formatting and validates static declarations with Etch itself.
-2. Runs `plan`, `apply`, and `doctor` for the representative profile.
-3. Checks that `.gitconfig` is a link to the module-owned file and that Git reads
-   the expected `init.defaultBranch = main` setting.
-4. Applies the profile again and fails if it reports changes or failures.
-
-There are no template test fixtures or separate Python test suite. This workflow
-validates your configuration through the commands you actually use. Etch's engine
-repository separately tests bootstrap and provider implementation behavior.
-
-When you add modules, install their prerequisites on the CI runner and add only
-the assertions needed for the state your repository promises. A successful
-apply alone is not a check of every desired setting. Opaque commands may report
-execution on every apply; adjust the second-run assertion deliberately if your
-configuration includes them.
+On macOS, CI prepares a temporary cask app directory and loads the environment
+of preinstalled Homebrew, including its standard Apple Silicon/Intel locations.
+If Homebrew is absent, this optional preparation is skipped; the generic starter
+does not require it and CI does not install it. Modules added later can use the
+prepared environment. GitLab's initial runner remains Linux, using the same
+platform-aware commands. Consumers only need to add runner prerequisites when
+their own modules need tools not already available; CI cannot infer every tool
+from arbitrary scripts, and privileged bootstrap remains an explicit choice.
 
 The GitHub workflow runs on every push and pull request targeting `main`, a weekly schedule and
 manual dispatch. Dependabot also proposes GitHub Actions and pinned Etch updates.
@@ -147,10 +146,10 @@ installation jobs.
 token. Keep the submodule pin when moving your consumer to GitLab. Private
 submodules require your own runner authentication configuration.
 
-Both services call `ci/verify.sh`, which creates and removes a temporary home,
-checks your real developer profile and asserts its promised Git configuration.
-Extend that script when you add modules, so GitHub and GitLab exercise the same
-configuration. No separate test fixtures or Python test packages are added.
+Both services keep their verification commands directly in their CI YAML files,
+using matching blocks to create an isolated temporary home and apply your real
+developer profile. Extend both blocks
+when adding modules so they continue to exercise the same configuration. No separate test fixtures or Python test packages are added.
 The full Python images provide Python, Bash and Git; use a Docker/Kubernetes
 runner that supports the job's `image`. Shell runners need those tools installed
 and do not select Python versions through `image`.
@@ -176,3 +175,43 @@ overwritten. GitHub is the source of truth while this workflow is enabled; featu
 branches, issues and merge requests are not copied. Successful pushes can start
 GitLab CI. Credentials are supplied through a temporary askpass script and are
 not stored in the remote URL.
+
+## Optional user-local launcher
+
+The native `sh` launcher follows symlinks using `readlink` (available on Linux
+and macOS), without GNU-only `readlink -f` or a Python resolution step. Python
+starts only when executing the pinned engine. It supports paths containing spaces,
+without copying engine or launcher code. If `~/.local/bin` is on your PATH, a link
+at `~/.local/bin/etch` can launch this consumer from any working directory. Keep
+both the checkout and its pinned engine available; moving the checkout requires
+updating the link. Dangling links and cycles fail rather than guessing a checkout.
+
+With an engine that supports `link.source_scope` (core Etch issue
+[#149](https://github.com/rm-industries/etch/issues/149)), declare an optional module
+and add it explicitly to your profile:
+
+```python
+{
+  'schema_version': 1,
+  'name': 'launcher',
+  'actions': [
+    {'link': {'~/.local/bin/etch': {
+      'path': 'etch', 'source_scope': 'repo', 'create': True,
+    }}},
+  ],
+}
+```
+
+The pinned engine includes repository-scoped sources and repository-wide doctor
+diagnostics. Review engine updates deliberately before changing the pin. Existing modules and
+profiles need no format or schema migration. Apply the module through `./etch`
+first; after setup, `etch validate`, `etch plan --profile developer`, and bare
+`etch` use this consumer's configuration and default preview behavior. Regular
+file/directory conflicts are refused; explicitly use `relink: True` only when you
+want to replace a different symlink.
+
+Installing the link and choosing your PATH are separate. If the directory is not
+already on PATH, add `$HOME/.local/bin` using your shell's own startup configuration
+(for example `export PATH="$HOME/.local/bin:$PATH"` in a POSIX-compatible shell).
+The template does not pick a shell or edit startup files. Launcher regression coverage belongs in core Etch. Template CI only validates
+and applies the selected consumer profile in an isolated home.
