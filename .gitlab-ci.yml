@@ -16,4 +16,4 @@ compatibility:
     matrix:
       - PYTHON_VERSION: ['3.9', '3']
   script:
-    - bash ci/verify.sh
+    - bash scripts/verify.sh

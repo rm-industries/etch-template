@@ -2,6 +2,8 @@
 
 import os
 import shutil
+import shlex
+import sys
 import subprocess
 import tempfile
 from pathlib import Path
@@ -59,6 +61,20 @@ with tempfile.TemporaryDirectory(prefix="etch launcher ") as directory:
         forwarded = run(launcher, "apply", "--profile", "does not exist")
         assert forwarded.returncode == 1, forwarded.stdout + forwarded.stderr
         assert "does not exist" in forwarded.stderr, forwarded.stderr
+    calls = temp / "python-calls"
+    (bins / "python3").write_text(
+        "#!/bin/sh\nprintf 'called\\n' >> "
+        + shlex.quote(str(calls))
+        + "\nexec "
+        + shlex.quote(sys.executable)
+        + ' "$@"\n'
+    )
+    (bins / "python3").chmod(0o755)
+    result = run(str(absolute), "validate")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert calls.read_text().splitlines() == ["called"], (
+        "Launcher invoked Python before starting the engine"
+    )
     assert not (home / ".gitconfig").exists(), (
         "Preview/validation mutated the user home"
     )

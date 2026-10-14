@@ -43,7 +43,7 @@ etch
 .gitignore
 .gitlab-ci.yml
 .github/workflows/etch.yml
-ci/verify.sh
+scripts/verify.sh
 defaults.conf
 profiles/developer.conf
 modules/git/module.conf
@@ -147,7 +147,7 @@ installation jobs.
 token. Keep the submodule pin when moving your consumer to GitLab. Private
 submodules require your own runner authentication configuration.
 
-Both services call `ci/verify.sh`, which creates and removes a temporary home,
+Both services call `scripts/verify.sh`, which creates and removes a temporary home,
 checks your real developer profile and asserts its promised Git configuration.
 Extend that script when you add modules, so GitHub and GitLab exercise the same
 configuration. No separate test fixtures or Python test packages are added.
@@ -179,7 +179,9 @@ not stored in the remote URL.
 
 ## Optional user-local launcher
 
-The launcher supports symlink invocation, including paths containing spaces,
+The native `sh` launcher follows symlinks using `readlink` (available on Linux
+and macOS), without GNU-only `readlink -f` or a Python resolution step. Python
+starts only when executing the pinned engine. It supports paths containing spaces,
 without copying engine or launcher code. If `~/.local/bin` is on your PATH, a link
 at `~/.local/bin/etch` can launch this consumer from any working directory. Keep
 both the checkout and its pinned engine available; moving the checkout requires

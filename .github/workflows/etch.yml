@@ -36,4 +36,4 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Verify developer profile
         shell: bash
-        run: bash ci/verify.sh
+        run: bash scripts/verify.sh

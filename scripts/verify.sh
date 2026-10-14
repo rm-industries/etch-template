@@ -14,7 +14,7 @@ run_etch() {
 
 run_etch format --check
 run_etch validate
-python3 -S ci/verify-launcher.py
+python3 -S scripts/verify-launcher.py
 run_etch plan --profile developer
 run_etch apply --profile developer
 run_etch doctor --profile developer
