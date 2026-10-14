@@ -43,7 +43,6 @@ etch
 .gitignore
 .gitlab-ci.yml
 .github/workflows/etch.yml
-scripts/verify.sh
 defaults.conf
 profiles/developer.conf
 modules/git/module.conf
@@ -147,10 +146,10 @@ installation jobs.
 token. Keep the submodule pin when moving your consumer to GitLab. Private
 submodules require your own runner authentication configuration.
 
-Both services call `scripts/verify.sh`, which creates and removes a temporary home,
-checks your real developer profile and asserts its promised Git configuration.
-Extend that script when you add modules, so GitHub and GitLab exercise the same
-configuration. No separate test fixtures or Python test packages are added.
+Both services keep their verification commands directly in their CI YAML files,
+using matching blocks to create an isolated temporary home, apply your real
+developer profile and check its promised Git configuration. Extend both blocks
+when adding modules so they continue to exercise the same configuration. No separate test fixtures or Python test packages are added.
 The full Python images provide Python, Bash and Git; use a Docker/Kubernetes
 runner that supports the job's `image`. Shell runners need those tools installed
 and do not select Python versions through `image`.

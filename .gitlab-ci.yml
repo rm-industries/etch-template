@@ -16,4 +16,69 @@ compatibility:
     matrix:
       - PYTHON_VERSION: ['3.9', '3']
   script:
-    - bash scripts/verify.sh
+    - |
+      set -euo pipefail
+      repo_dir=$(pwd -P)
+      ci_home=$(mktemp -d)
+      ci_home=$(cd -- "$ci_home" && pwd -P)
+      trap 'rm -rf -- "$ci_home"' EXIT
+
+      run_etch() {
+        env HOME="$ci_home" "$repo_dir/etch" "$@"
+      }
+
+      run_etch format --check
+      run_etch validate
+      run_etch > /dev/null
+      run_etch plan --profile developer
+      run_etch apply --profile developer
+      run_etch doctor --profile developer
+
+      # Verify the starter's promised Git configuration and repeat-apply behavior.
+      test -L "$ci_home/.gitconfig"
+      test "$(readlink "$ci_home/.gitconfig")" = "$repo_dir/modules/git/files/gitconfig"
+      test "$(git config --file "$ci_home/.gitconfig" --get init.defaultBranch)" = main
+      run_etch apply --profile developer | tee "$ci_home/second-apply.log"
+      if grep -Eq '^[[:space:]]*(CHANGED|FAILED|BLOCKED)([[:space:]]|$)' "$ci_home/second-apply.log"; then
+        echo "Second apply changed the expected declarative state." >&2
+        exit 1
+      fi
+
+      # Exercise the real launcher through links from outside a checkout with spaces.
+      probe="$ci_home/checkout with spaces"
+      bin_dir="$ci_home/bin with spaces"
+      probe_home="$ci_home/launcher-home"
+      mkdir -p "$probe/vendor" "$bin_dir" "$probe_home"
+      cp -p etch defaults.conf "$probe/"
+      cp -R modules profiles "$probe/"
+      ln -s "$repo_dir/vendor/etch" "$probe/vendor/etch"
+      ln -s "$probe/etch" "$bin_dir/etch"
+      ln -s '../checkout with spaces/etch' "$bin_dir/relative"
+      ln -s relative "$bin_dir/chain"
+      (
+        cd "$ci_home"
+        for launcher in "$probe/etch" "$bin_dir/etch" "$bin_dir/relative" "$bin_dir/chain"; do
+          env HOME="$probe_home" "$launcher" validate
+          env HOME="$probe_home" "$launcher" > "$ci_home/preview.log"
+          grep -F "Plan: $probe" "$ci_home/preview.log"
+          if env HOME="$probe_home" "$launcher" plan --profile 'does not exist' > /dev/null 2> "$ci_home/forwarding.log"; then
+            echo 'Launcher lost the failure exit status.' >&2
+            exit 1
+          else
+            test "$?" -eq 1
+            grep -F 'does not exist' "$ci_home/forwarding.log"
+          fi
+        done
+        env HOME="$probe_home" PATH="$bin_dir:$PATH" etch validate
+        test ! -e "$probe_home/.gitconfig"
+        ln -s missing "$bin_dir/dangling"
+        ln -s cycle-b "$bin_dir/cycle-a"
+        ln -s cycle-a "$bin_dir/cycle-b"
+        for invalid in dangling cycle-a; do
+          if /bin/sh "$bin_dir/$invalid" > /dev/null 2> "$ci_home/invalid-link.log"; then
+            echo 'Invalid launcher link unexpectedly succeeded.' >&2
+            exit 1
+          fi
+          test -s "$ci_home/invalid-link.log"
+        done
+      )
