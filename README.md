@@ -84,10 +84,13 @@ git ls-tree HEAD vendor/etch
 
 `.gitmodules` records where to fetch Etch. The `160000` entry in the consumer's
 Git tree records the exact commit; it does not track a moving branch. This starter
-pins Etch source commit `ccfb1fdcfceea2bab2f7d0c559323fe18b0d11ed`. Generated consumers preserve that
+pins Etch source commit `652196260fa53eda727f55e69ef649673ade607e`. Generated consumers preserve that
 pin when they retain the template's Git tree. Downloading a source ZIP does not
 include submodule contents; use a recursive clone or initialize the submodule.
-The launcher prints initialization guidance when the engine is absent.
+The launcher prints initialization guidance when the engine is absent. Once the
+engine is available, use `./etch submodules update` (or `etch submodules update`
+through the optional user-local launcher) to initialize all consumer submodules
+at their recorded pins. This does not select newer upstream revisions.
 
 ## Update deliberately
 
@@ -96,9 +99,9 @@ Choose and review an Etch release or commit, then update the pin explicitly:
 ```sh
 git -C vendor/etch fetch origin
 git -C vendor/etch checkout --detach REVIEWED_COMMIT
+git add vendor/etch
 ./etch doctor --profile developer
 ./etch
-git add vendor/etch
 git commit -m "Update pinned Etch engine"
 ```
 
