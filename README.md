@@ -141,17 +141,19 @@ pin itself. There is no implicit plugin installation.
 
 ## CI checks your configuration
 
-The GitHub workflow runs the `developer` profile on Linux and macOS with both
+The GitHub workflow runs the `developer` profile on Linux, macOS and Windows with both
 Python 3.9 and the latest stable Python 3.x. The profile currently contains the
-starter Git and Etch launcher modules; add ordinary modules to that profile rather than to the CI
-matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
+starter Git and Etch launcher modules; add ordinary modules to that profile
+rather than to the CI matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
 validate declarations, diagnose repository setup, preview the developer profile
 and apply it. This follows the dotfiles workflow: CI checks whether **your setup
 applies successfully**, rather than testing Etch's implementation. Extend the
 profile and install runner prerequisites when adding modules. Optional assertions
 for application-specific outcomes belong to the consumer only when desired.
-Launcher regression tests, symlink edge cases and provider idempotence belong in
-the core Etch project; the starter does not add fixtures or helper directories.
+Launcher regression tests, symlink edge cases and provider internals are tested in
+core Etch. The Windows consumer job also invokes the installed launcher from an
+unrelated directory and verifies an unchanged second apply. The starter does not
+add fixtures or helper directories.
 
 On macOS, CI prepares a temporary cask app directory and loads the environment
 of preinstalled Homebrew, including its standard Apple Silicon/Intel locations.
