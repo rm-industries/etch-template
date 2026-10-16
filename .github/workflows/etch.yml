@@ -65,3 +65,49 @@ jobs:
           env HOME="$ci_home" ./etch doctor --profile developer
           env HOME="$ci_home" ./etch plan --profile developer
           env HOME="$ci_home" ./etch apply --profile developer
+
+  windows-compatibility:
+    name: Windows / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.x']
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify Windows launchers and second apply
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:USERPROFILE = Join-Path $env:RUNNER_TEMP 'etch-consumer-home'
+          $env:HOME = $env:USERPROFILE
+          New-Item -ItemType Directory -Force $env:USERPROFILE | Out-Null
+          foreach ($arguments in @(
+            @('format', '--check'), @('validate'),
+            @('doctor', '--profile', 'developer'),
+            @('plan', '--profile', 'developer'),
+            @('apply', '--profile', 'developer')
+          )) {
+            & .\etch.cmd @arguments
+            if ($LASTEXITCODE -ne 0) { throw "Etch failed: $arguments" }
+          }
+          $launcher = Join-Path $env:USERPROFILE '.local/bin/etch.cmd'
+          Push-Location $env:RUNNER_TEMP
+          try {
+            & $launcher plan --profile developer
+            if ($LASTEXITCODE -ne 0) { throw 'Linked launcher plan failed' }
+            $second = & $launcher apply --profile developer
+            if ($LASTEXITCODE -ne 0) { throw 'Second apply failed' }
+            if ($second -match '^\s*(CHANGED|FAILED|BLOCKED)') {
+              throw "Second apply was not unchanged: $second"
+            }
+          } finally {
+            Pop-Location
+          }
