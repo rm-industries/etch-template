@@ -1,7 +1,7 @@
 # Etch template
 
 A minimal consumer repository for [Etch](https://github.com/rm-industries/etch).
-It includes one generic Git configuration module, a developer profile, empty
+It includes generic Git and launcher modules, a developer profile, empty
 provider defaults, and an engine pinned as a Git submodule. There are no optional
 plugins, personal identity settings, credentials or package installations.
 The Git module declares an `available` fact with the explicit `command` provider;
@@ -19,7 +19,8 @@ cd YOUR-DOTFILES
 ```
 
 `./etch` displays the developer **plan**. It does not apply changes. Review the
-module before applying: this starter links its generic file to `~/.gitconfig`.
+modules before applying: this starter links its generic file to `~/.gitconfig`
+and installs a user-local launcher through the `etch` module.
 An existing conflicting file is refused, so migrate its settings and decide
 ownership before replacing anything.
 
@@ -31,20 +32,47 @@ ownership before replacing anything.
 
 Explicit arguments are passed to Etch unchanged. The launcher resolves its actual checkout, including through absolute/relative
 symlinks, and runs from the consumer root even when invoked from another directory. Runtime needs only a
-supported Linux/macOS environment, `/bin/sh`, and Python 3.9 or newer; no virtual
+supported Linux/macOS environment with `/bin/sh`, or native Windows with
+PowerShell, and Python 3.9 or newer on PATH; no virtual
 environment, pip, Git or network is needed after the engine is initialized.
 Git and network access are needed to clone/initialize or update the submodule.
+
+## Windows and the user-local launcher
+
+On Windows, use `.\etch.cmd` or `.\etch.ps1` with the same arguments as `./etch`.
+A bare invocation shows a plan. For example:
+
+```powershell
+.\etch.cmd plan --profile developer
+.\etch.cmd apply --profile developer
+```
+
+The `etch` module links the consumer's launchers into `~/.local/bin` and adds that
+directory to Windows **user** PATH. Open a new terminal afterward; `etch` will find
+this consumer from other directories. On Unix the module links `etch`; add
+`~/.local/bin` to your shell PATH if needed. The module does not use machine PATH.
+
+Before Windows `apply`, the launcher probes file and directory symlink creation
+with the current Python process. If denied, it stops before applying and explains
+how to enable Developer Mode for non-admin use. It does not elevate or change
+system settings. `plan`, `doctor`, and help remain available. Success in an admin
+session does not grant a normal terminal privileges; test from your normal session.
+Individual destination permissions can still deny linking after the probe passes.
 
 ## Files you own
 
 ```text
 etch
+etch.cmd
+etch.ps1
 .gitmodules
 .gitignore
 .gitlab-ci.yml
 .github/workflows/etch.yml
 defaults.conf
 profiles/developer.conf
+modules/etch/module.conf
+modules/etch/add-user-path.ps1
 modules/git/module.conf
 modules/git/files/gitconfig
 vendor/etch/                 # pinned engine submodule
@@ -113,17 +141,19 @@ pin itself. There is no implicit plugin installation.
 
 ## CI checks your configuration
 
-The GitHub workflow runs the `developer` profile on Linux and macOS with both
+The GitHub workflow runs the `developer` profile on Linux, macOS and Windows with both
 Python 3.9 and the latest stable Python 3.x. The profile currently contains the
-starter Git module; add ordinary modules to that profile rather than to the CI
-matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
+starter Git and Etch launcher modules; add ordinary modules to that profile
+rather than to the CI matrix. Each job uses a fresh temporary home and the pinned engine to check formatting,
 validate declarations, diagnose repository setup, preview the developer profile
 and apply it. This follows the dotfiles workflow: CI checks whether **your setup
 applies successfully**, rather than testing Etch's implementation. Extend the
 profile and install runner prerequisites when adding modules. Optional assertions
 for application-specific outcomes belong to the consumer only when desired.
-Launcher regression tests, symlink edge cases and provider idempotence belong in
-the core Etch project; the starter does not add fixtures or helper directories.
+Launcher regression tests, symlink edge cases and provider internals are tested in
+core Etch. The Windows consumer job also invokes the installed launcher from an
+unrelated directory and verifies an unchanged second apply. The starter does not
+add fixtures or helper directories.
 
 On macOS, CI prepares a temporary cask app directory and loads the environment
 of preinstalled Homebrew, including its standard Apple Silicon/Intel locations.
@@ -179,42 +209,22 @@ branches, issues and merge requests are not copied. Successful pushes can start
 GitLab CI. Credentials are supplied through a temporary askpass script and are
 not stored in the remote URL.
 
-## Optional user-local launcher
+## User-local launcher
 
-The native `sh` launcher follows symlinks using `readlink` (available on Linux
-and macOS), without GNU-only `readlink -f` or a Python resolution step. Python
-starts only when executing the pinned engine. It supports paths containing spaces,
-without copying engine or launcher code. If `~/.local/bin` is on your PATH, a link
-at `~/.local/bin/etch` can launch this consumer from any working directory. Keep
-both the checkout and its pinned engine available; moving the checkout requires
-updating the link. Dangling links and cycles fail rather than guessing a checkout.
+The included `etch` module installs the appropriate consumer launchers and is part
+of the developer profile. Launchers follow their symlinks back to the checkout;
+keep that checkout and its pinned engine available. Moving the checkout requires
+reapplying the module to update the links. Dangling links and cycles fail rather
+than guessing a checkout. Existing files and directories are refused; `relink`
+only permits replacing a different symlink.
 
-With an engine that supports `link.source_scope` (core Etch issue
-[#149](https://github.com/rm-industries/etch/issues/149)), declare an optional module
-and add it explicitly to your profile:
+On Unix, add `$HOME/.local/bin` to your shell's own startup configuration if it is
+not already on PATH. The template does not pick a shell or edit startup files.
+On Windows, the module adds the directory to user PATH; reopen your terminal.
+Core Etch tests launcher behavior, while template CI applies the selected profile
+in an isolated home and verifies the linked Windows launcher and second apply.
 
-```python
-{
-  'schema_version': 1,
-  'name': 'launcher',
-  'actions': [
-    {'link': {'~/.local/bin/etch': {
-      'path': 'etch', 'source_scope': 'repo', 'create': True,
-    }}},
-  ],
-}
-```
-
-The pinned engine includes repository-scoped sources and repository-wide doctor
-diagnostics. Review engine updates deliberately before changing the pin. Existing modules and
-profiles need no format or schema migration. Apply the module through `./etch`
-first; after setup, `etch validate`, `etch plan --profile developer`, and bare
-`etch` use this consumer's configuration and default preview behavior. Regular
-file/directory conflicts are refused; explicitly use `relink: True` only when you
-want to replace a different symlink.
-
-Installing the link and choosing your PATH are separate. If the directory is not
-already on PATH, add `$HOME/.local/bin` using your shell's own startup configuration
-(for example `export PATH="$HOME/.local/bin:$PATH"` in a POSIX-compatible shell).
-The template does not pick a shell or edit startup files. Launcher regression coverage belongs in core Etch. Template CI only validates
-and applies the selected consumer profile in an isolated home.
+The Windows `.cmd` wrapper permits its trusted launcher script in its own PowerShell
+process without changing user or machine execution policy; organization Group Policy
+still takes precedence. Child provider processes inherit this session policy.
+Direct `.ps1` invocation requires a session that permits scripts.
