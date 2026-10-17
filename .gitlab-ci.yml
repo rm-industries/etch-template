@@ -16,6 +16,7 @@ compatibility:
     matrix:
       - PYTHON_VERSION: ['3.9', '3']
   script:
+    - python .github/tests/test_installers.py
     - |
       set -euo pipefail
       ci_home=$(mktemp -d)

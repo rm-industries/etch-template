@@ -59,10 +59,84 @@ system settings. `plan`, `doctor`, and help remain available. Success in an admi
 session does not grant a normal terminal privileges; test from your normal session.
 Individual destination permissions can still deny linking after the probe passes.
 
+## Bootstrap a generated repository
+
+`install.sh` (macOS/Linux) and `install.ps1` (native Windows PowerShell 5.1 or
+PowerShell 7) are fresh-machine bootstraps. They require Git, clone once, and
+initialize pinned submodules. They do not install prerequisites, elevate, pull,
+update an existing checkout, or apply a complete profile.
+
+GitHub does **not** rewrite script contents when generating a repository from a
+template. Before sharing your installer, configure the owner-editable values at
+the top of **both** scripts:
+
+- Repository: your generated repository URL. It is initially empty and must be
+  configured or supplied with `--repo URL`; there is no upstream-template fallback.
+- Destination: initially `~/.dotfiles`. Edit the default or set `DOTFILES_DIR`.
+- Module: initially empty, so no module runs. Set `module='etch'` in `install.sh`
+  and `$module = 'etch'` in `install.ps1` to install only the user-local launcher.
+
+`--repo URL` overrides the owner's repository default. `--module NAME` runs
+exactly that one module through the existing Etch CLI after a fresh clone.
+`--no-module` suppresses any configured or explicit module, regardless of flag
+order. Python 3.9+ (`python3` on Unix, `python` on Windows) is required only when a
+fresh install will run a module; clone-only and existing-checkout runs need no Python.
+
+After committing these files in **your generated repository**, substitute its
+owner/name in both URLs below. The downloaded script and the clone URL must refer
+to the same repository. These commands become available only after your commit is
+published to that repository's `main` branch:
+
+```sh
+installer=$(curl -fsSL https://raw.githubusercontent.com/YOUR-OWNER/YOUR-DOTFILES/main/install.sh) && printf '%s\n' "$installer" | sh -s -- --repo https://github.com/YOUR-OWNER/YOUR-DOTFILES.git
+```
+
+```powershell
+powershell.exe -NoProfile -Command "& ([scriptblock]::Create((Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/YOUR-OWNER/YOUR-DOTFILES/main/install.ps1' -ErrorAction Stop))) --repo 'https://github.com/YOUR-OWNER/YOUR-DOTFILES.git'"
+```
+
+Downloading and executing an installer trusts that repository's current code and
+pinned submodules. On managed machines, or when reviewing changes, prefer downloading
+and reading the script first. An immutable commit URL can replace `main`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/YOUR-OWNER/YOUR-DOTFILES/main/install.sh -o install.sh
+less install.sh
+DOTFILES_DIR="$HOME/my dotfiles" sh install.sh --repo https://github.com/YOUR-OWNER/YOUR-DOTFILES.git --no-module
+```
+
+```powershell
+Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/YOUR-OWNER/YOUR-DOTFILES/main/install.ps1' -OutFile install.ps1
+Get-Content .\install.ps1
+$env:DOTFILES_DIR = Join-Path $HOME 'my dotfiles'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 --repo https://github.com/YOUR-OWNER/YOUR-DOTFILES.git --no-module
+```
+
+The reviewed-file Windows command sets execution policy only for that process;
+Group Policy still takes precedence. Windows modules that create symlinks still
+need Developer Mode or the appropriate session privileges. The installers do not
+change those settings. To select a module, replace `--no-module` with `--module etch`
+(or another module name), then open a new terminal if it updates user PATH.
+
+An existing checkout with the expected `origin` is a **strict no-op**, even with
+`--module`: no pull, submodule update, or Etch command runs. GitHub HTTPS and SSH
+origins are recognized as the same repository, with or without `.git`. Other
+occupied destinations, including dangling links, fail without being overwritten.
+Failed clone/submodule operations can leave a partial checkout. It is retained
+for inspection; a rerun does not repair it. If a module fails, resolve the error
+and run Etch explicitly from the retained checkout.
+
+Both scripts use exit 2 for invalid arguments or missing repository configuration,
+127 for a missing prerequisite, and 1 for an unrelated destination. Git and Etch
+failure exit codes are preserved. Bootstrap behavior is tested with local generated
+repositories and recursive submodules, on Unix and both Windows PowerShell hosts.
+
 ## Files you own
 
 ```text
 etch
+install.sh
+install.ps1
 etch.cmd
 etch.ps1
 .gitmodules
@@ -152,8 +226,10 @@ profile and install runner prerequisites when adding modules. Optional assertion
 for application-specific outcomes belong to the consumer only when desired.
 Launcher regression tests, symlink edge cases and provider internals are tested in
 core Etch. The Windows consumer job also invokes the installed launcher from an
-unrelated directory and verifies an unchanged second apply. The starter does not
-add fixtures or helper directories.
+unrelated directory and verifies an unchanged second apply. The consumer's own
+bootstrap scripts are checked by `.github/tests/test_installers.py`, using temporary
+local Git fixtures rather than cloning hosted repositories. GitHub runs that contract
+on Unix and both PowerShell hosts; GitLab runs its Unix contract.
 
 On macOS, CI prepares a temporary cask app directory and loads the environment
 of preinstalled Homebrew, including its standard Apple Silicon/Intel locations.

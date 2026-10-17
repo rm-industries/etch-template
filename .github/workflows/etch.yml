@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
+      - name: Test bootstrap installer
+        run: python .github/tests/test_installers.py
       - name: Apply developer profile
         shell: bash
         run: |
@@ -82,6 +84,9 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
+      - name: Test Windows bootstrap installers
+        shell: pwsh
+        run: python .github/tests/test_installers.py
       - name: Verify Windows launchers and second apply
         shell: pwsh
         run: |
